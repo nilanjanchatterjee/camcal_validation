@@ -6,13 +6,14 @@ library(lme4)
 
 ### R code to fit model for effective detection distance estimation
 devtools::source_url("https://raw.githubusercontent.com/MarcusRowcliffe/distanceDF/master/distancedf.r")
+devtools::source_url("https://raw.githubusercontent.com/nilanjanchatterjee/camcal_validation/main/CTtracking_err.r")
 
 ##############################################################################
 ################## Data files for calibration validation 
-predval <-read.csv("camera_deployment_validation.csv")
-sitecal <-read.csv("Site_digitisation_data.csv")
-modcoef <- read.csv("pole_11_mod_param.csv")
-posdat_mov <-read.csv("Speed_sequences_data.csv")
+predval <-read.csv("https://raw.githubusercontent.com/nilanjanchatterjee/camcal_validation/main/camera_deployment_validation_.csv")
+sitecal <-read.csv("https://raw.githubusercontent.com/nilanjanchatterjee/camcal_validation/main/Site_digitisation_data.csv")
+modcoef <- read.csv("https://raw.githubusercontent.com/nilanjanchatterjee/camcal_validation/main/pole_11_mod_param.csv")
+posdat_mov <-read.csv("https://raw.githubusercontent.com/nilanjanchatterjee/camcal_validation/main/Speed_seq_data.csv")
 
 #########################################################################################
 ################### Simulation for Effective radius estimation
@@ -75,7 +76,7 @@ sderr <- sd(err, na.rm=T)
 bflat <- subset(modcoef, location_type=="flat")[, 2:4] %>%
   apply(2, mean)
 
-reps <- 250
+reps <- 500
 flat50 <- data.frame(t(pbreplicate(reps, suppressMessages(
   sim_rep(points=50, b=bflat, maxr=25, mnx, mny, mnerr, sdx, sdy, sderr)
 ))))
@@ -113,7 +114,7 @@ mean(flat200$aic_hr_err < flat200$aic_hn_err)
 bslop <- subset(modcoef, location_type=="sloping")[, 2:4] %>%
   apply(2, mean)
 
-reps <- 100
+reps <- 500
 slop50 <- data.frame(t(pbreplicate(reps, suppressMessages(
   sim_rep(points=50, b=bslop, maxr=15, mnx, mny, mnerr, sdx, sdy, sderr)
 ))))
@@ -166,19 +167,19 @@ probdep <-as.numeric(xtabs(~deployment, predval)/nrow(predval))
 ### Load the speed sequences data
 head(posdat_mov)
 posdat_mov$uid <- paste(posdat_mov$siteid, posdat_mov$sequence_id, sep = "-")
-names(posdat_mov)[9] <-"seq_id"
-names(posdat_mov)[26] <-"sequence_id"
+names(posdat_mov)[7] <-"seq_id"
+names(posdat_mov)[20] <-"sequence_id"
 
 ### Adding a column for matching the folder name and prepare a new column
 s1 <-as.numeric(xtabs(~sequence_id, posdat_mov))
-posdat_mov$new_seq <-rep(sample(deps, 718,replace = T, prob = probdep), times= s1)
+posdat_mov$new_seq <-rep(sample(deps, 675,replace = T, prob = probdep), times= s1)
 posdat_mov$new_seq1 <- paste(posdat_mov$sequence_id,posdat_mov$new_seq, sep = "-")
-names(posdat_mov)[26] <-"new_seq_id"
-names(posdat_mov)[28] <-"sequence_id"
+names(posdat_mov)[20] <-"new_seq_id"
+names(posdat_mov)[22] <-"sequence_id"
 
 seqdat <- seq.summary(posdat_mov) ## movement analysis with capture sequences
 #timediff to drop some outliers and error in data
-seqdat1 <-subset(seqdat, seqdat$timediff<2000 & seqdat$species=="takin")
+seqdat1 <-subset(seqdat, seqdat$timediff<2000)
 
 avgpixdif <- 400 #average pixel difference between points used to generate error distributions... Actual around ~392
 ##
@@ -195,13 +196,14 @@ speeds_err_500 <- replicate(500, {
     dep_error[match(posdat_try$new_seq, deps)] + #deployment-level error
     rnorm(nrow(posdat_try), sd=obsd) #observation-level error
   seqdat_try <- seq.summary(posdat_try)
-  1/(mean(1/(seqdat_try$speed_err[is.finite(seqdat_try$speed_err) & 
-                                    seqdat_try$species=="takin" & # optional line to include species
-                                    seqdat_try$pixdiff>10 & 
-                                    seqdat_try$timediff<2000])))#harmonic mean speed
+  spd <-sample(1/(seqdat_try$speed_err[is.finite(seqdat_try$speed_err) & seqdat_try$pixdiff>10 & 
+                               seqdat_try$timediff<2000]), size = 500, replace = F)
+  1/(mean(spd[is.finite(spd)]))#harmonic mean speed
 })
 
 ### Compare and plot the simulated speed distribution with error
-truespeed <- 1/(mean(1/seqdat$speed[is.finite(seqdat$speed) & seqdat$pixdiff<10]))
+trspd<-1/seqdat1$speed[is.finite(seqdat1$speed) & seqdat1$pixdiff>10]
+truespeed <- 1/(mean(trspd[is.finite(trspd)]))
+
 boxplot(speeds_err_500, names= c("500_rep"), ylab= "Estimated speed (m/s)")
 abline(h= truespeed, lwd=2, col="red")
