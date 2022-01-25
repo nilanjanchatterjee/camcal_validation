@@ -154,17 +154,21 @@ mean(slop200$aic_hr_err < slop200$aic_hn_err)
 ####################################################################################
 #################### Speed simulation function
 
-### Mixed effects models for the error segregation
+### Mixed effects models for the deployment and observational level error segregation
 lmrsum <-summary(lmer(as.numeric(diff) ~ 1+ (1|deployment), data= predval))
 lmrsum
 
+### Extract the coefficient from the mixed model to be used in the simulation error
 depmn <-lmrsum$coefficients[1] 
 depsd <-sqrt(lmrsum$varcor$deployment[1])
 obssd <-lmrsum$sigma
+
+### Unique deployment level for the deployment level error
 deps <- unique(predval$deployment)
 probdep <-as.numeric(xtabs(~deployment, predval)/nrow(predval))
 
-### Load the speed sequences data
+### Load the speed sequences data and make a unique column for the sequence with the camera id
+### This is because some sequence_id can be same across different site_id  
 head(posdat_mov)
 posdat_mov$uid <- paste(posdat_mov$siteid, posdat_mov$sequence_id, sep = "-")
 names(posdat_mov)[7] <-"seq_id"
@@ -186,6 +190,7 @@ avgpixdif <- 400 #average pixel difference between points used to generate error
 
 pixdiff <- seq.data(posdat_mov)$pixdiff
 
+### Repeat the speed_estimation analysis for different number of replicates 
 speeds_err_500 <- replicate(500, {
   dep_error <- rnorm(length(deps), depmn, depsd) * 0.01 #deployment-specific errors (m)
   obsd <- 0.1 * obssd * pixdiff/avgpixdif #observation specific standard deviation
@@ -197,13 +202,14 @@ speeds_err_500 <- replicate(500, {
     rnorm(nrow(posdat_try), sd=obsd) #observation-level error
   seqdat_try <- seq.summary(posdat_try)
   spd <-sample(1/(seqdat_try$speed_err[is.finite(seqdat_try$speed_err) & seqdat_try$pixdiff>10 & 
-                               seqdat_try$timediff<2000]), size = 500, replace = F)
+                               seqdat_try$timediff<2000]), size = 500, replace = F) ## extract different number of samples from the set of complete sequences
   1/(mean(spd[is.finite(spd)]))#harmonic mean speed
 })
 
 ### Compare and plot the simulated speed distribution with error
 trspd<-1/seqdat1$speed[is.finite(seqdat1$speed) & seqdat1$pixdiff>10]
-truespeed <- 1/(mean(trspd[is.finite(trspd)]))
+truespeed <- 1/(mean(trspd[is.finite(trspd)])) ## Calculate the true speed
 
+### Plot the data with the actual spped 
 boxplot(speeds_err_500, names= c("500_rep"), ylab= "Estimated speed (m/s)")
 abline(h= truespeed, lwd=2, col="red")
