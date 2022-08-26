@@ -210,6 +210,11 @@ speeds_err_500 <- replicate(500, {
 trspd<-1/seqdat1$speed[is.finite(seqdat1$speed) & seqdat1$pixdiff>10]
 truespeed <- 1/(mean(trspd[is.finite(trspd)])) ## Calculate the true speed
 
+### Plot the speed distribution with the pixel difference
+par(mfrow =c(1,2))
+plot(seqdat_try$pixdiff, seqdat_try$speed, log="xy", xlab= "Pixel difference", ylab= "Speed")
+plot(seqdat_try$pixdiff, seqdat_try$speed_err, log="xy", xlab= "Pixel difference", ylab= "Speed")
+
 ### Plot the data with the actual spped 
 boxplot(speeds_err_500, names= c("500_rep"), ylab= "Estimated speed (m/s)")
 abline(h= truespeed, lwd=2, col="red")
