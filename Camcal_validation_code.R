@@ -193,7 +193,9 @@ pixdiff <- seq.data(posdat_mov)$pixdiff
 ### Repeat the speed_estimation analysis for different number of replicates 
 speeds_err_500 <- replicate(500, {
   dep_error <- rnorm(length(deps), depmn, depsd) * 0.01 #deployment-specific errors (m)
-  obsd <- 0.1 * obssd * pixdiff/avgpixdif #observation specific standard deviation
+  #obsd <- 0.1 * obssd * pixdiff/avgpixdif #observation specific standard deviation
+  ## 0.1 is used as most of the speed sequence of the digitised data has 10 points but can be changed to exact values is required
+  obsd <-(posdat_mov$number_of_points)* obssd * pixdiff/avgpixdif #observation specific standard deviation
   obsd[is.na(obsd)] <- 0
   obsd[obsd>1] <- 1
   posdat_try <- posdat_mov
